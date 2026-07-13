@@ -1,0 +1,65 @@
+name: free-expo-builds
+description: >-
+  Build an Expo app locally with `eas build --local` — no build queue, no EAS
+  build credits. Produces .ipa / .apk / .aab artifacts in build-output/.
+author: Ahmad Atallah
+branding:
+  icon: package
+  color: blue
+
+inputs:
+  platform:
+    description: "Platform to build: ios | android | all (iOS needs a macOS runner)"
+    required: true
+  profile:
+    description: Build profile from your eas.json
+    required: true
+  expo-token:
+    description: Expo access token (create one at https://expo.dev/settings/access-tokens)
+    required: true
+  working-directory:
+    description: Directory containing the Expo app (where eas.json lives)
+    required: false
+    default: "."
+  pre-build-command:
+    description: Command to run after install, before build (e.g. build a shared monorepo lib)
+    required: false
+    default: ""
+  app-name:
+    description: Artifact filename prefix (defaults to the app.json / package.json name)
+    required: false
+    default: ""
+
+outputs:
+  ios-artifact:
+    description: Path to the built iOS artifact (empty if not built)
+    value: ${{ steps.artifacts.outputs.ios-artifact }}
+  android-artifact:
+    description: Path to the built Android artifact (empty if not built)
+    value: ${{ steps.artifacts.outputs.android-artifact }}
+  output-dir:
+    description: Absolute path to the build-output directory
+    value: ${{ steps.artifacts.outputs.output-dir }}
+
+runs:
+  using: composite
+  steps:
+    - name: Build
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        EXPO_TOKEN: ${{ inputs.expo-token }}
+        PRE_BUILD_COMMAND: ${{ inputs.pre-build-command }}
+        APP_NAME: ${{ inputs.app-name }}
+      run: bash "${{ github.action_path }}/build.sh" "${{ inputs.platform }}" "${{ inputs.profile }}" --non-interactive
+
+    - name: Collect artifacts
+      id: artifacts
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        {
+          echo "ios-artifact=$(ls build-output/*.ipa build-output/*.tar.gz 2>/dev/null | head -1)"
+          echo "android-artifact=$(ls build-output/*.apk build-output/*.aab 2>/dev/null | head -1)"
+          echo "output-dir=$PWD/build-output"
+        } >> "$GITHUB_OUTPUT"

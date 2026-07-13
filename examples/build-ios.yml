@@ -1,0 +1,29 @@
+# Example: build an iOS .ipa on a macOS runner.
+# Note: macOS runner minutes are billed at a multiplier on private repos,
+# but public repos get them free — still no EAS build credits either way.
+name: Build iOS
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: ahmadatallah/free-expo-builds@v1
+        id: build
+        with:
+          platform: ios
+          profile: production
+          expo-token: ${{ secrets.EXPO_TOKEN }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ios-build
+          path: ${{ steps.build.outputs.ios-artifact }}

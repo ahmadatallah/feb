@@ -1,0 +1,37 @@
+# Example: build an Android APK/AAB on every push to main, for free,
+# on a standard ubuntu runner — no EAS build credits consumed.
+name: Build Android
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: ahmadatallah/free-expo-builds@v1
+        id: build
+        with:
+          platform: android
+          profile: production
+          expo-token: ${{ secrets.EXPO_TOKEN }}
+          # working-directory: apps/mobile          # monorepos
+          # pre-build-command: pnpm --filter @myorg/lib build
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-build
+          path: ${{ steps.build.outputs.android-artifact }}

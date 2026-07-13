@@ -1,0 +1,7 @@
+build-output/
+.env
+node_modules/
+credentials.json
+*.ipa
+*.apk
+*.aab
