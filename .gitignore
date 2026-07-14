@@ -5,3 +5,7 @@ credentials.json
 *.ipa
 *.apk
 *.aab
+.DS_Store
+
+# Local launch/demo video assets — not part of the source
+brag-output/
