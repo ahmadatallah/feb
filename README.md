@@ -28,6 +28,8 @@ This script wraps that into a single command:
    - Upload artifacts to any WebDAV server (Fastmail Files, Nextcloud, ownCloud, ...) — a free way to distribute internal builds to your team
    - Submit to TestFlight / Google Play via `eas submit` (store-distribution profiles only)
 
+Prefer submitting manually? The artifacts in `build-output/` are standard store-ready files — upload the `.ipa` to App Store Connect with Apple's [Transporter](https://apps.apple.com/us/app/transporter/id1450874784) app, and the `.aab` through the [Google Play Console](https://play.google.com/console).
+
 ## Requirements
 
 - **Node.js** 22.x LTS
@@ -107,7 +109,7 @@ jobs:
         with:
           distribution: temurin
           java-version: 17
-      - uses: ahmadatallah/free-expo-builds@v1
+      - uses: ahmadatallah/free-expo-builds@v1.0.1
         id: build
         with:
           platform: android
@@ -126,12 +128,35 @@ jobs:
 
 Full workflow examples in [`examples/`](./examples). iOS builds need `runs-on: macos-latest` (Xcode preinstalled on GitHub-hosted macOS runners).
 
+## Used by
+
+<a href="https://hashcards.app">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://hashcards.app/icon-dark.png">
+    <img src="https://hashcards.app/icon.png" alt="Hashcards logo" width="48" align="left">
+  </picture>
+</a>
+
+**[Hashcards](https://hashcards.app)** — flashcards with free spaced-repetition scheduling (FSRS). Ships its iOS and Android builds with this action.
+
+<br clear="left">
+
+Using free-expo-builds in your app? Open a PR to add it here.
+
 ## Notes & gotchas
 
 - **Credentials**: `eas build --local` still uses EAS-managed credentials (signing certs, provisioning profiles, keystores) if you have them configured — or a local `credentials.json`. See the [local builds docs](https://docs.expo.dev/build-reference/local-builds/).
 - **Simulator profiles** (`ios.simulator: true`) produce a `.tar.gz` containing an `.app`, not an `.ipa` — the script names artifacts accordingly and skips the device-install prompt.
 - **Disk space**: local builds compile the whole native project; expect several GB of intermediate artifacts under the EAS temp directory.
 - **Reproducibility**: cloud builds run in a clean container; local builds run on your machine. Pin your Node/pnpm versions in `eas.json` (`node`, `pnpm` fields) to keep them close.
+
+## Development
+
+```bash
+bash tests/run-tests.sh
+```
+
+Runs the test suite against fixture projects with all external commands (`eas`, `brew`, package managers) stubbed — no network, no real builds. CI runs shellcheck + the suite on every push/PR.
 
 ## License
 

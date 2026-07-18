@@ -16,7 +16,7 @@ jobs:
         with:
           node-version: 22
 
-      - uses: ahmadatallah/free-expo-builds@v1
+      - uses: ahmadatallah/free-expo-builds@v1.0.1
         id: build
         with:
           platform: ios
