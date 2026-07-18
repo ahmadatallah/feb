@@ -109,7 +109,7 @@ jobs:
         with:
           distribution: temurin
           java-version: 17
-      - uses: ahmadatallah/free-expo-builds@v1.0.1
+      - uses: ahmadatallah/free-expo-builds@v1.0.2
         id: build
         with:
           platform: android
