@@ -1,4 +1,4 @@
-name: free-expo-builds
+name: feb (free expo builds)
 description: Build Expo apps locally with `eas build --local` — no build queue, no EAS credits. Outputs .ipa/.apk/.aab.
 author: Ahmad Atallah
 branding:

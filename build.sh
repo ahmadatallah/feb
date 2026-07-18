@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # =============================================================================
-# free-expo-builds
+# feb (free-expo-builds)
 # =============================================================================
 # Build your Expo app locally with `eas build --local` — no build queue,
 # no EAS build credits, no cloud. This script handles:
@@ -231,7 +231,7 @@ print_row() {
 
 echo ""
 echo -e "${GREEN}╔$(printf '═%.0s' $(seq 1 $BOX_WIDTH))╗${NC}"
-print_centered "free-expo-builds"
+print_centered "feb (free-expo-builds)"
 echo -e "${GREEN}╠$(printf '═%.0s' $(seq 1 $BOX_WIDTH))╣${NC}"
 print_row "App:" "$APP_NAME"
 print_row "Platform:" "$PLATFORM"

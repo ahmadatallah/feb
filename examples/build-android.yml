@@ -22,7 +22,7 @@ jobs:
           distribution: temurin
           java-version: 17
 
-      - uses: ahmadatallah/free-expo-builds@v1.1.0
+      - uses: ahmadatallah/feb@v1.1.2
         id: build
         with:
           platform: android

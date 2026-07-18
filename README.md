@@ -1,8 +1,8 @@
-# free-expo-builds
+# feb (free-expo-builds)
 
-Build your Expo app **locally, for free** — iOS and Android — using `eas build --local`. No build queue, no EAS build credits, no cloud minutes. One script handles dependency setup, building, device deployment, artifact uploads, and store submission.
+Build your Expo app **locally, for free** — iOS and Android — using `eas build --local`. No build queue, no EAS build credits, no cloud minutes. One command handles dependency setup, building, device deployment, artifact uploads, and store submission.
 
-![free-expo-builds demo](./docs/demo.gif)
+![feb demo](./docs/demo.gif)
 
 ## Why
 
@@ -68,14 +68,14 @@ java = "temurin-17"
 Install with [Homebrew](https://github.com/ahmadatallah/homebrew-tap) — the command is `feb` — and run it from your Expo project root:
 
 ```bash
-brew install ahmadatallah/tap/free-expo-builds
+brew install ahmadatallah/tap/feb
 feb ios staging
 ```
 
 Or drop `build.sh` into your Expo project root (or a `scripts/` folder inside it):
 
 ```bash
-curl -o build.sh https://raw.githubusercontent.com/ahmadatallah/free-expo-builds/main/build.sh
+curl -o build.sh https://raw.githubusercontent.com/ahmadatallah/feb/main/build.sh
 chmod +x build.sh
 ```
 
@@ -140,7 +140,7 @@ jobs:
         with:
           distribution: temurin
           java-version: 17
-      - uses: ahmadatallah/free-expo-builds@v1.1.0
+      - uses: ahmadatallah/feb@v1.1.2
         id: build
         with:
           platform: android
