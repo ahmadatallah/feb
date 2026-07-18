@@ -54,6 +54,15 @@ The script checks every tool it needs and installs the missing ones where it saf
 
 Your project's own dependencies are installed with whatever your lockfile says — npm, yarn, pnpm, or bun all work.
 
+**Pinning versions with [mise](https://mise.jdx.dev)**: if your project has a `.mise.toml`, `mise.toml`, or `.tool-versions`, the script runs `mise install` first and uses that toolchain — so Node and JDK come from your pins instead of whatever is on the machine (mise itself is auto-installed if missing):
+
+```toml
+# .mise.toml in your Expo project
+[tools]
+node = "22"
+java = "temurin-17"
+```
+
 ## Setup
 
 Drop `build.sh` into your Expo project root (or a `scripts/` folder inside it):
@@ -123,7 +132,7 @@ jobs:
         with:
           distribution: temurin
           java-version: 17
-      - uses: ahmadatallah/free-expo-builds@v1.0.2
+      - uses: ahmadatallah/free-expo-builds@v1.1.0
         id: build
         with:
           platform: android
@@ -162,11 +171,12 @@ Using free-expo-builds in your app? Open a PR to add it here.
 - **Credentials**: `eas build --local` still uses EAS-managed credentials (signing certs, provisioning profiles, keystores) if you have them configured — or a local `credentials.json`. See the [local builds docs](https://docs.expo.dev/build-reference/local-builds/).
 - **Simulator profiles** (`ios.simulator: true`) produce a `.tar.gz` containing an `.app`, not an `.ipa` — the script names artifacts accordingly and skips the device-install prompt.
 - **Disk space**: local builds compile the whole native project; expect several GB of intermediate artifacts under the EAS temp directory.
-- **Reproducibility**: cloud builds run in a clean container; local builds run on your machine. Pin your Node/pnpm versions in `eas.json` (`node`, `pnpm` fields) to keep them close.
+- **Reproducibility**: cloud builds run in a clean container; local builds run on your machine. Pin your toolchain with a `.mise.toml` (see [Dependencies](#dependencies)) and your Node/pnpm versions in `eas.json` (`node`, `pnpm` fields) to keep them close.
 
 ## Development
 
 ```bash
+mise install          # pinned dev toolchain (node, shellcheck) from .mise.toml
 bash tests/run-tests.sh
 ```
 

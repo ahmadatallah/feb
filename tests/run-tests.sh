@@ -67,6 +67,7 @@ make_recording_stub npm
 make_recording_stub pnpm
 make_recording_stub yarn
 make_recording_stub bun
+make_recording_stub mise
 
 # Fake eas: `whoami` succeeds, `build` writes a dummy artifact to --output
 # (unless FAKE_EAS_BUILD_FAIL is set, simulating a build that produces nothing)
@@ -308,6 +309,24 @@ test_build_without_artifact_exits_nonzero() {
     assert_output_contains "did not produce an artifact"
 }
 
+test_mise_toolchain_installed_when_pinned() {
+    local dir; dir="$(make_fixture mise-config)"
+    printf '[tools]\nnode = "22"\n' >"$dir/.mise.toml"
+    run_build "$dir" "$dir/build.sh" android preview --non-interactive
+    assert_status 0
+    grep -q "mise install" "$TEST_MARKER_FILE" || t_fail "expected 'mise install' to run"
+    assert_glob "$dir/build-output/my-cool-app-preview-*.apk"
+}
+
+test_mise_skipped_without_config() {
+    local dir; dir="$(make_fixture mise-absent)"
+    run_build "$dir" "$dir/build.sh" android preview --non-interactive
+    assert_status 0
+    if grep -q "^mise" "$TEST_MARKER_FILE" 2>/dev/null; then
+        t_fail "mise should not run without a mise config"
+    fi
+}
+
 # -----------------------------------------------------------------------------
 # Tests: install step and hooks
 # -----------------------------------------------------------------------------
@@ -361,6 +380,8 @@ run_test test_ios_device_builds_ipa
 run_test test_all_builds_both_platforms
 run_test test_app_name_env_override_is_sanitized
 run_test test_build_without_artifact_exits_nonzero
+run_test test_mise_toolchain_installed_when_pinned
+run_test test_mise_skipped_without_config
 run_test test_npm_ci_used_with_package_lock
 run_test test_pre_build_command_runs
 run_test test_monorepo_installs_at_workspace_root

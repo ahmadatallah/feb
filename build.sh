@@ -253,6 +253,29 @@ if [[ "$(uname)" == "Darwin" ]]; then
     fi
 fi
 
+# mise (https://mise.jdx.dev): if the project pins tool versions with mise,
+# install and activate that toolchain so the Node/Java checks below (and
+# `npm install -g eas-cli`) resolve to the pinned versions
+MISE_CONFIG=""
+for f in .mise.toml mise.toml .tool-versions; do
+    if [[ -f "$PROJECT_DIR/$f" ]]; then
+        MISE_CONFIG="$f"
+        break
+    fi
+done
+if [[ -n "$MISE_CONFIG" ]]; then
+    if ! check_command mise; then
+        log_info "Installing mise..."
+        curl -fsSL https://mise.run | sh
+        export PATH="$HOME/.local/bin:$PATH"
+    fi
+    log_info "Found $MISE_CONFIG — installing pinned toolchain..."
+    (cd "$PROJECT_DIR" && mise trust >/dev/null 2>&1 || true)
+    (cd "$PROJECT_DIR" && mise install)
+    eval "$(cd "$PROJECT_DIR" && mise env -s bash)"
+    log_success "mise toolchain active"
+fi
+
 # Check Node.js
 if ! check_command node; then
     log_error "Node.js is not installed. Please install Node.js 22.x LTS"
