@@ -2,6 +2,8 @@
 
 Build your Expo app **locally, for free** — iOS and Android — using `eas build --local`. No build queue, no EAS build credits, no cloud minutes. One script handles dependency setup, building, device deployment, artifact uploads, and store submission.
 
+![free-expo-builds demo](./docs/demo.gif)
+
 ## Why
 
 EAS cloud builds are convenient but metered: free-tier builds are limited and queued, and paid plans charge per build. The EAS CLI can run the exact same build pipeline **on your own machine** with `--local` — same profiles, same credentials management, same output artifacts — for free and usually faster.

@@ -1,7 +1,5 @@
 name: free-expo-builds
-description: >-
-  Build an Expo app locally with `eas build --local` — no build queue, no EAS
-  build credits. Produces .ipa / .apk / .aab artifacts in build-output/.
+description: Build Expo apps locally with `eas build --local` — no build queue, no EAS credits. Outputs .ipa/.apk/.aab.
 author: Ahmad Atallah
 branding:
   icon: package
