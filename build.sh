@@ -302,12 +302,16 @@ if [[ "$PLATFORM" == "ios" ]] || [[ "$PLATFORM" == "all" ]]; then
         log_success "Fastlane $FASTLANE_VERSION is installed"
     fi
 
-    # Check and install ios-deploy (for device deployment)
-    if ! check_command ios-deploy; then
-        log_info "Installing ios-deploy..."
-        brew install ios-deploy
-    else
-        log_success "ios-deploy is installed"
+    # ios-deploy is only used by the interactive device-deploy prompt —
+    # skip it in CI / --non-interactive where that prompt never runs
+    # (also avoids Homebrew tap-trust warnings on GitHub runners)
+    if [[ "$INTERACTIVE" == "true" ]]; then
+        if ! check_command ios-deploy; then
+            log_info "Installing ios-deploy..."
+            brew install ios-deploy
+        else
+            log_success "ios-deploy is installed"
+        fi
     fi
 fi
 

@@ -32,13 +32,27 @@ Prefer submitting manually? The artifacts in `build-output/` are standard store-
 
 ## Requirements
 
-- **Node.js** 22.x LTS
 - **An Expo project** with an [`eas.json`](https://docs.expo.dev/eas/json/) (see [`eas.example.json`](./eas.example.json))
 - **A free Expo account** — `eas build --local` needs authentication but does not consume build credits
-- For **iOS builds**: macOS with Xcode installed
-- For **Android builds**: Android SDK (`ANDROID_HOME`) and JDK 17 — works on macOS and Linux
 
-Everything else (EAS CLI, CocoaPods, Fastlane, ios-deploy, pnpm) is installed automatically if missing.
+### Dependencies
+
+The script checks every tool it needs and installs the missing ones where it safely can:
+
+| Tool                                                    | Needed for                                                  | Auto-installed?                                |
+| ------------------------------------------------------- | ----------------------------------------------------------- | ---------------------------------------------- |
+| [Node.js](https://nodejs.org) 22.x LTS                  | everything — EAS CLI and the build itself                   | No — install it yourself                       |
+| [EAS CLI](https://github.com/expo/eas-cli)              | `eas build --local` / `eas submit`                          | Yes (`npm install -g eas-cli`)                 |
+| [Homebrew](https://brew.sh)                             | installing the macOS tools below                            | Yes (macOS only)                               |
+| Xcode                                                   | iOS builds                                                  | No — App Store                                 |
+| [CocoaPods](https://cocoapods.org)                      | iOS builds                                                  | Yes (brew)                                     |
+| [Fastlane](https://fastlane.tools)                      | iOS builds (archive & signing)                              | Yes (brew)                                     |
+| [ios-deploy](https://github.com/ios-control/ios-deploy) | installing on a connected iPhone (interactive only)         | Yes (brew; skipped in CI)                      |
+| Android SDK (`ANDROID_HOME`)                            | Android builds                                              | No — auto-detected in common install locations |
+| JDK 17                                                  | Android builds                                              | Yes on macOS (brew); no on Linux               |
+| adb                                                     | installing on a connected Android device (interactive only) | Comes with the Android SDK                     |
+
+Your project's own dependencies are installed with whatever your lockfile says — npm, yarn, pnpm, or bun all work.
 
 ## Setup
 

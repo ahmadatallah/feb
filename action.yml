@@ -59,9 +59,14 @@ runs:
       id: artifacts
       shell: bash
       working-directory: ${{ inputs.working-directory }}
+      # Outputs must be absolute paths: consumers like actions/upload-artifact
+      # resolve relative paths from the workspace root, not working-directory
       run: |
+        shopt -s nullglob
+        ios=("$PWD"/build-output/*.ipa "$PWD"/build-output/*.tar.gz)
+        android=("$PWD"/build-output/*.apk "$PWD"/build-output/*.aab)
         {
-          echo "ios-artifact=$(ls build-output/*.ipa build-output/*.tar.gz 2>/dev/null | head -1)"
-          echo "android-artifact=$(ls build-output/*.apk build-output/*.aab 2>/dev/null | head -1)"
+          echo "ios-artifact=${ios[0]:-}"
+          echo "android-artifact=${android[0]:-}"
           echo "output-dir=$PWD/build-output"
         } >> "$GITHUB_OUTPUT"
