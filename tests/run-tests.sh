@@ -15,7 +15,9 @@ set -u
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BUILD_SH="$REPO_DIR/build.sh"
 
-if ! NODE_BIN="$(command -v node)"; then
+# Resolve the real node binary, not a version-manager shim (mise/asdf/nvm):
+# shims break inside the env -i sandbox below where HOME points elsewhere
+if ! NODE_BIN="$(node -e 'process.stdout.write(process.execPath)' 2>/dev/null)" || [[ -z "$NODE_BIN" ]]; then
     echo "node is required to run the tests" >&2
     exit 1
 fi
