@@ -49,7 +49,11 @@ runs:
         EXPO_TOKEN: ${{ inputs.expo-token }}
         PRE_BUILD_COMMAND: ${{ inputs.pre-build-command }}
         APP_NAME: ${{ inputs.app-name }}
-      run: bash "${{ github.action_path }}/build.sh" "${{ inputs.platform }}" "${{ inputs.profile }}" --non-interactive
+        # platform/profile go through env (not ${{ }} interpolation in `run`)
+        # so untrusted workflow inputs cannot inject shell commands
+        PLATFORM: ${{ inputs.platform }}
+        PROFILE: ${{ inputs.profile }}
+      run: bash "${{ github.action_path }}/build.sh" "$PLATFORM" "$PROFILE" --non-interactive
 
     - name: Collect artifacts
       id: artifacts

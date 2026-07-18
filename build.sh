@@ -98,23 +98,29 @@ check_command() {
     fi
 }
 
-# Read a value out of a JSON file with node (node is required for Expo anyway)
+# Read a value out of a JSON file with node (node is required for Expo anyway).
+# expr must be a static, script-authored string — anything user-controlled
+# (file path, profile name) is passed out-of-band via argv, never spliced into
+# the JS source. Available in expr: j (parsed JSON), arg (optional third param).
 json_get() {
     local file="$1"
     local expr="$2"
+    local arg="${3:-}"
     node -e "
-        const j = JSON.parse(require('fs').readFileSync('$file', 'utf8'));
+        const j = JSON.parse(require('fs').readFileSync(process.argv[1], 'utf8'));
+        const arg = process.argv[2];
         const v = (() => { try { return $expr } catch { return undefined } })();
         if (v !== undefined && v !== null) process.stdout.write(String(v));
-    " 2>/dev/null || true
+    " "$file" "$arg" 2>/dev/null || true
 }
 
 # Read a field from the selected build profile, resolving the 'extends' chain
-# so inherited fields (buildType, distribution, simulator) are picked up
+# so inherited fields (buildType, distribution, simulator) are picked up.
+# Available in expr: p (resolved profile object), j (full eas.json).
 profile_get() {
     local expr="$1"
     node -e "
-        const j = JSON.parse(require('fs').readFileSync('$EAS_JSON', 'utf8'));
+        const j = JSON.parse(require('fs').readFileSync(process.argv[1], 'utf8'));
         const resolve = (name, seen = new Set()) => {
             const raw = (j.build || {})[name];
             if (!raw || seen.has(name)) return {};
@@ -126,10 +132,10 @@ profile_get() {
                 android: { ...base.android, ...raw.android },
             };
         };
-        const p = resolve('$PROFILE');
+        const p = resolve(process.argv[2]);
         const v = (() => { try { return $expr } catch { return undefined } })();
         if (v !== undefined && v !== null) process.stdout.write(String(v));
-    " 2>/dev/null || true
+    " "$EAS_JSON" "$PROFILE" 2>/dev/null || true
 }
 
 # =============================================================================
@@ -173,7 +179,7 @@ fi
 # Validate profile against eas.json
 EAS_JSON="$PROJECT_DIR/eas.json"
 AVAILABLE_PROFILES=$(json_get "$EAS_JSON" "Object.keys(j.build || {}).join(', ')")
-PROFILE_EXISTS=$(json_get "$EAS_JSON" "j.build && j.build['$PROFILE'] ? 'yes' : ''")
+PROFILE_EXISTS=$(json_get "$EAS_JSON" "j.build && j.build[arg] ? 'yes' : ''" "$PROFILE")
 if [[ -z "$PROFILE_EXISTS" ]]; then
     log_error "Profile '$PROFILE' not found in eas.json"
     echo "Available profiles: ${AVAILABLE_PROFILES:-none}"
@@ -435,6 +441,7 @@ mkdir -p "$BUILD_OUTPUT_DIR"
 # Track built artifacts
 IOS_ARTIFACT=""
 ANDROID_ARTIFACT=""
+BUILD_FAILED=false
 BUILD_TIMESTAMP=$(date +%s)
 
 # Build iOS
@@ -442,7 +449,7 @@ if [[ "$PLATFORM" == "ios" ]] || [[ "$PLATFORM" == "all" ]]; then
     log_info "Building iOS ($PROFILE profile)..."
 
     # Simulator builds produce .app archives, device builds produce .ipa
-    IOS_SIMULATOR=$(json_get "$EAS_JSON" "j.build['$PROFILE'].ios?.simulator ? 'yes' : ''")
+    IOS_SIMULATOR=$(profile_get "p.ios?.simulator ? 'yes' : ''")
     if [[ -n "$IOS_SIMULATOR" ]]; then
         IOS_EXT="tar.gz"
     else
@@ -469,6 +476,7 @@ if [[ "$PLATFORM" == "ios" ]] || [[ "$PLATFORM" == "all" ]]; then
             log_success "iOS build completed: $IOS_ARTIFACT"
         else
             log_error "iOS build failed or artifact not found"
+            BUILD_FAILED=true
         fi
     fi
 fi
@@ -478,7 +486,7 @@ if [[ "$PLATFORM" == "android" ]] || [[ "$PLATFORM" == "all" ]]; then
     log_info "Building Android ($PROFILE profile)..."
 
     # Artifact extension follows the profile's buildType (default: app-bundle)
-    ANDROID_BUILD_TYPE=$(json_get "$EAS_JSON" "j.build['$PROFILE'].android?.buildType")
+    ANDROID_BUILD_TYPE=$(profile_get "p.android?.buildType")
     if [[ "$ANDROID_BUILD_TYPE" == "apk" ]]; then
         ANDROID_EXT="apk"
     else
@@ -505,8 +513,14 @@ if [[ "$PLATFORM" == "android" ]] || [[ "$PLATFORM" == "all" ]]; then
             log_success "Android build completed: $ANDROID_ARTIFACT"
         else
             log_error "Android build failed or artifact not found"
+            BUILD_FAILED=true
         fi
     fi
+fi
+
+if [[ "$BUILD_FAILED" == "true" ]]; then
+    log_error "One or more builds did not produce an artifact"
+    exit 1
 fi
 
 # =============================================================================
@@ -517,14 +531,14 @@ if [[ "$INTERACTIVE" == "true" ]]; then
     log_step "Step 5: Post-Build Actions"
 
     # Internal-distribution builds: offer device deployment
-    DISTRIBUTION=$(json_get "$EAS_JSON" "j.build['$PROFILE'].distribution")
+    DISTRIBUTION=$(profile_get "p.distribution")
 
     # iOS: Offer to install on connected device (device builds only)
     if [[ -n "$IOS_ARTIFACT" ]] && [[ -f "$IOS_ARTIFACT" ]] && [[ "$IOS_ARTIFACT" == *.ipa ]]; then
         echo ""
         echo -e "${YELLOW}iOS Build Available: $(basename "$IOS_ARTIFACT")${NC}"
         echo ""
-        read -p "Do you want to install on a connected iOS device? (y/n): " INSTALL_IOS
+        read -rp "Do you want to install on a connected iOS device? (y/n): " INSTALL_IOS
 
         if [[ "$INSTALL_IOS" == "y" ]] || [[ "$INSTALL_IOS" == "Y" ]]; then
             echo ""
@@ -533,7 +547,7 @@ if [[ "$INTERACTIVE" == "true" ]]; then
             echo "  2) Network/WiFi (ios-deploy -w)"
             echo "  3) Skip"
             echo ""
-            read -p "Choice (1/2/3): " INSTALL_METHOD
+            read -rp "Choice (1/2/3): " INSTALL_METHOD
 
             case $INSTALL_METHOD in
             1)
@@ -560,7 +574,7 @@ if [[ "$INTERACTIVE" == "true" ]]; then
             echo ""
             echo -e "${YELLOW}Android Build Available: $(basename "$ANDROID_ARTIFACT")${NC}"
             echo ""
-            read -p "Do you want to install on a connected Android device/emulator? (y/n): " INSTALL_ANDROID
+            read -rp "Do you want to install on a connected Android device/emulator? (y/n): " INSTALL_ANDROID
 
             if [[ "$INSTALL_ANDROID" == "y" ]] || [[ "$INSTALL_ANDROID" == "Y" ]]; then
                 log_info "Installing via adb..."
@@ -572,18 +586,18 @@ if [[ "$INTERACTIVE" == "true" ]]; then
 
     # Upload artifacts to a WebDAV server (Fastmail Files, Nextcloud, etc.)
     echo ""
-    read -p "Do you want to upload artifacts to a WebDAV server? (y/n): " UPLOAD_WEBDAV
+    read -rp "Do you want to upload artifacts to a WebDAV server? (y/n): " UPLOAD_WEBDAV
 
     if [[ "$UPLOAD_WEBDAV" == "y" ]] || [[ "$UPLOAD_WEBDAV" == "Y" ]]; then
         log_info "Uploading to WebDAV..."
 
         # Check for credentials
         if [[ -z "${WEBDAV_BASE_URL:-}" ]]; then
-            read -p "Enter WebDAV base URL (e.g. https://webdav.fastmail.com/files): " WEBDAV_BASE_URL
+            read -rp "Enter WebDAV base URL (e.g. https://webdav.fastmail.com/files): " WEBDAV_BASE_URL
         fi
         if [[ -z "${WEBDAV_USERNAME:-}" ]] || [[ -z "${WEBDAV_PASSWORD:-}" ]]; then
-            read -p "Enter WebDAV username: " WEBDAV_USERNAME
-            read -sp "Enter WebDAV password: " WEBDAV_PASSWORD
+            read -rp "Enter WebDAV username: " WEBDAV_USERNAME
+            read -rsp "Enter WebDAV password: " WEBDAV_PASSWORD
             echo ""
         fi
 
@@ -628,7 +642,7 @@ if [[ "$INTERACTIVE" == "true" ]]; then
         # iOS: Submit to TestFlight
         if [[ -n "$IOS_ARTIFACT" ]] && [[ -f "$IOS_ARTIFACT" ]] && [[ "$IOS_ARTIFACT" == *.ipa ]]; then
             echo ""
-            read -p "Submit iOS build to TestFlight? (y/n): " SUBMIT_IOS
+            read -rp "Submit iOS build to TestFlight? (y/n): " SUBMIT_IOS
 
             if [[ "$SUBMIT_IOS" == "y" ]] || [[ "$SUBMIT_IOS" == "Y" ]]; then
                 log_info "Submitting to TestFlight..."
@@ -647,7 +661,7 @@ if [[ "$INTERACTIVE" == "true" ]]; then
         # Android: Submit to Google Play
         if [[ -n "$ANDROID_ARTIFACT" ]] && [[ -f "$ANDROID_ARTIFACT" ]]; then
             echo ""
-            read -p "Submit Android build to Google Play? (y/n): " SUBMIT_ANDROID
+            read -rp "Submit Android build to Google Play? (y/n): " SUBMIT_ANDROID
 
             if [[ "$SUBMIT_ANDROID" == "y" ]] || [[ "$SUBMIT_ANDROID" == "Y" ]]; then
                 log_info "Submitting to Google Play..."
