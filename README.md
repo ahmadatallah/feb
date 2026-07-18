@@ -65,7 +65,14 @@ java = "temurin-17"
 
 ## Setup
 
-Drop `build.sh` into your Expo project root (or a `scripts/` folder inside it):
+Install with [Homebrew](https://github.com/ahmadatallah/homebrew-tap) and run it from your Expo project root:
+
+```bash
+brew install ahmadatallah/tap/free-expo-builds
+free-expo-builds ios staging
+```
+
+Or drop `build.sh` into your Expo project root (or a `scripts/` folder inside it):
 
 ```bash
 curl -o build.sh https://raw.githubusercontent.com/ahmadatallah/free-expo-builds/main/build.sh

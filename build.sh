@@ -150,16 +150,18 @@ if [[ "${3:-}" == "--non-interactive" ]] || [[ -n "${CI:-}" ]]; then
 fi
 
 usage() {
-    echo "Usage: ./build.sh <platform> <profile> [--non-interactive]"
+    local prog
+    prog="$(basename "$0")"
+    echo "Usage: $prog <platform> <profile> [--non-interactive]"
     echo ""
     echo "Arguments:"
     echo "  platform: ios | android | all"
     echo "  profile:  any build profile defined in your eas.json"
     echo ""
     echo "Examples:"
-    echo "  ./build.sh ios staging"
-    echo "  ./build.sh android production"
-    echo "  ./build.sh all preview --non-interactive"
+    echo "  $prog ios staging"
+    echo "  $prog android production"
+    echo "  $prog all preview --non-interactive"
 }
 
 if [[ -z "$PLATFORM" ]] || [[ -z "$PROFILE" ]]; then

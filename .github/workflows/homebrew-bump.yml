@@ -1,0 +1,21 @@
+name: bump-homebrew-formula
+
+# Updates Formula/free-expo-builds.rb in ahmadatallah/homebrew-tap on every
+# release. Requires the TAP_GITHUB_TOKEN secret: a fine-grained PAT with
+# contents:write on the homebrew-tap repo.
+on:
+  release:
+    types: [published]
+
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: mislav/bump-homebrew-formula-action@v3
+        with:
+          formula-name: free-expo-builds
+          formula-path: Formula/free-expo-builds.rb
+          homebrew-tap: ahmadatallah/homebrew-tap
+          download-url: https://github.com/ahmadatallah/free-expo-builds/archive/refs/tags/${{ github.event.release.tag_name }}.tar.gz
+        env:
+          COMMITTER_TOKEN: ${{ secrets.TAP_GITHUB_TOKEN }}

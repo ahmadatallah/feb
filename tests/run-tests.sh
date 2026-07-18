@@ -202,7 +202,7 @@ test_missing_args_shows_usage() {
     local dir; dir="$(make_fixture missing-args)"
     run_build "$dir" "$dir/build.sh"
     assert_status 1
-    assert_output_contains "Usage: ./build.sh"
+    assert_output_contains "Usage: build.sh"
 }
 
 test_invalid_platform_rejected() {
