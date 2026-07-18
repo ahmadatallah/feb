@@ -11,9 +11,9 @@ EAS cloud builds are convenient but metered: free-tier builds are limited and qu
 This script wraps that into a single command:
 
 ```bash
-./build.sh ios staging
-./build.sh android production
-./build.sh all preview
+feb ios staging
+feb android production
+feb all preview
 ```
 
 ## What it does
@@ -65,11 +65,11 @@ java = "temurin-17"
 
 ## Setup
 
-Install with [Homebrew](https://github.com/ahmadatallah/homebrew-tap) and run it from your Expo project root:
+Install with [Homebrew](https://github.com/ahmadatallah/homebrew-tap) — the command is `feb` — and run it from your Expo project root:
 
 ```bash
 brew install ahmadatallah/tap/free-expo-builds
-free-expo-builds ios staging
+feb ios staging
 ```
 
 Or drop `build.sh` into your Expo project root (or a `scripts/` folder inside it):
@@ -95,7 +95,8 @@ Optionally add npm scripts:
 ## Usage
 
 ```
-./build.sh <platform> <profile> [--non-interactive]
+feb <platform> <profile> [--non-interactive]      # brew install
+./build.sh <platform> <profile> [--non-interactive]  # vendored script
 
 platform: ios | android | all
 profile:  any build profile defined in your eas.json
