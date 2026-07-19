@@ -1,6 +1,6 @@
 # feb (free-expo-builds)
 
-Build your Expo app **locally, for free** — iOS and Android — using `eas build --local`. No build queue, no EAS build credits, no cloud minutes. One command handles dependency setup, building, device deployment, artifact uploads, and store submission.
+**feb** is a script that builds your Expo app **locally** with `eas build --local` — then deploys it to a device, uploads it, or submits it to the stores — with every requirement (EAS CLI, CocoaPods, Fastlane, JDK, ...) checked and installed for you. iOS and Android. No build queue, no EAS build credits, no cloud minutes.
 
 ![feb demo](./docs/demo.gif)
 
