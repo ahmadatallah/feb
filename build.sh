@@ -116,9 +116,11 @@ log_resources() {
     df_line=$(df -h "$PROJECT_DIR" | awk 'NR == 2 { print $4 " free of " $2 " on " $NF }')
     log_info "Resources: ${mem_gib} GiB RAM, ${df_line}"
 
-    # 16 GB is ubuntu-latest. An uncapped Gradle daemon (-Xmx8192m plus a
-    # metaspace, which is allocated OUTSIDE -Xmx) does not fit beside the Kotlin
-    # daemon, the Gradle workers, Metro and EAS's own node process.
+    # A hosted runner is 4 vCPU / 16 GB on a public repo but 2 vCPU / ~7.8 GiB
+    # on a private one. An uncapped Gradle daemon (-Xmx8192m plus a metaspace,
+    # which is allocated OUTSIDE -Xmx) does not fit beside the Kotlin daemon,
+    # the Gradle workers, Metro and EAS's own node process — and on the small
+    # runner the four-ABI native build will not fit either.
     if [[ "$mem_gib" -lt 17 ]] && [[ "$PLATFORM" != "ios" ]]; then
         log_warning "Under 17 GiB of RAM: cap org.gradle.jvmargs for Android release builds"
         log_warning "See 'Hosted-runner resources' in the feb README"

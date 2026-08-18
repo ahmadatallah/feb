@@ -161,7 +161,7 @@ Full workflow examples in [`examples/`](./examples). iOS builds need `runs-on: m
 
 ## Hosted-runner resources
 
-GitHub's `ubuntu-latest` gives you 4 vCPUs, **16 GB of RAM** and roughly **20 GB free on `/`**. A release build of a React Native app with a normal complement of native modules will exhaust either one, and neither failure produces a usable error. Both are worth recognising by shape:
+`ubuntu-latest` is not one machine. On a **public** repo it is 4 vCPUs and 16 GB of RAM; on a **private** repo it is **2 vCPUs and ~7.8 GiB**. Both leave roughly 20 GB free on `/`. A release build of a React Native app with a normal complement of native modules will exhaust CPU, RAM and disk on the smaller one, and neither the memory nor the disk failure produces a usable error. Both are worth recognising by shape:
 
 ```
 ##[error]The runner has received a shutdown signal. This can happen when the
@@ -200,7 +200,7 @@ Worth about 20 GB. A local build compiles the whole native project and EAS keeps
 
 ### Memory
 
-A Gradle daemon configured for a workstation will not fit. The ceiling is heap **plus** metaspace, and metaspace is allocated *outside* `-Xmx` — so `-Xmx8192m -XX:MaxMetaspaceSize=3072m` reserves about 11 GB for one JVM. On 16 GB that leaves nothing for the Kotlin daemon (its own JVM), the Gradle workers, Metro and EAS's node process, and `:app:mergeExtDexRelease` — the heaviest task in a release build — tips the box over.
+A Gradle daemon configured for a workstation will not fit. The ceiling is heap **plus** metaspace, and metaspace is allocated *outside* `-Xmx` — so `-Xmx8192m -XX:MaxMetaspaceSize=3072m` reserves about 11 GB for one JVM. That leaves nothing for the Kotlin daemon (its own JVM), the Gradle workers, Metro and EAS's node process, and `:app:mergeExtDexRelease` — the heaviest task in a release build — tips the box over. Check the figure feb prints rather than the published spec: a private repo's runner has less than half the RAM the docs quote.
 
 Note that `org.gradle.workers.max` does not help here: modern AGP merges dex *in-process* inside the daemon heap, so the worker cap cannot reach the task that dies.
 
@@ -216,8 +216,9 @@ const GIB = 1024 ** 3
 // The workflow sets EAS_BUILD_RUNNER_LOW_MEM. The CI + RAM check behind it is a
 // safety net: `eas build --local` re-execs the prebuild in child processes, and
 // a dropped variable would fail the same silent way 25 minutes in. Both halves
-// are load-bearing — a hosted runner reports ~15.6 GiB and so does a 16 GB
-// laptop, and a dev machine has to keep the generous profile.
+// are load-bearing — a hosted runner reports 7.8 GiB (private) or ~15.6 GiB
+// (public), and a 16 GB laptop reports ~15.6 GiB too, so CI is what tells a
+// small runner apart from a dev machine that must keep the generous profile.
 const isLowMemoryRunner =
   process.env.EAS_BUILD_RUNNER_LOW_MEM === '1' ||
   (process.env.CI === 'true' && os.totalmem() < 17 * GIB)
@@ -254,6 +255,22 @@ jobs:
 ```
 
 Job-level `env` reaches the composite action's shell, `eas build --local` inherits it, and prebuild's child processes inherit it from there.
+
+### Native compilation
+
+Capping the heap fixes the JVM phases and then the build stalls somewhere new: `buildCMakeRelWithDebInfo`. `reactNativeArchitectures` defaults to all four ABIs, so every native module — Skia and Reanimated are the usual offenders — is compiled four times, with clang running in parallel across them. Two vCPUs cannot absorb that.
+
+`x86` and `x86_64` are emulator-only (plus a handful of Chromebooks), and Play serves per-ABI splits out of the AAB, so dropping them costs no phone anything:
+
+```js
+// app.config.js
+;[
+  'expo-build-properties',
+  { android: { buildArchs: ['arm64-v8a', 'armeabi-v7a'] } },
+]
+```
+
+Note that `abiFilters` is **not** an `expo-build-properties` option — it validates fine and does nothing. `buildArchs` is the key that reaches Gradle. This also applies to local `expo run:android`: an Apple Silicon emulator is `arm64-v8a` and unaffected, but an `x86_64` emulator on an Intel host would no longer get native libs.
 
 If you would rather not tune any of this, move the Android job to a larger runner (8 vCPU / 32 GB) and leave the workstation profile in place — billed per minute on private repos.
 
