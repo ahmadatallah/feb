@@ -98,6 +98,33 @@ check_command() {
     fi
 }
 
+# Print the two resources a local Expo build actually runs out of.
+#
+# This is post-mortem evidence, not diagnostics. When a hosted runner exhausts
+# RAM or disk, the kernel kills the RUNNER SERVICE rather than gradlew: GitHub
+# then reports "the runner has received a shutdown signal", EAS reports "Gradle
+# build failed with unknown error" with no stack trace, and the job log is
+# never uploaded at all — the upload dies with the runner. A line printed here
+# survives in the stream that already reached GitHub.
+log_resources() {
+    local mem_gib df_line
+    if [[ "$(uname)" == "Darwin" ]]; then
+        mem_gib=$(($(sysctl -n hw.memsize) / 1073741824))
+    else
+        mem_gib=$(awk '/^MemTotal:/ { printf "%d", $2 / 1048576 }' /proc/meminfo)
+    fi
+    df_line=$(df -h "$PROJECT_DIR" | awk 'NR == 2 { print $4 " free of " $2 " on " $NF }')
+    log_info "Resources: ${mem_gib} GiB RAM, ${df_line}"
+
+    # 16 GB is ubuntu-latest. An uncapped Gradle daemon (-Xmx8192m plus a
+    # metaspace, which is allocated OUTSIDE -Xmx) does not fit beside the Kotlin
+    # daemon, the Gradle workers, Metro and EAS's own node process.
+    if [[ "$mem_gib" -lt 17 ]] && [[ "$PLATFORM" != "ios" ]]; then
+        log_warning "Under 17 GiB of RAM: cap org.gradle.jvmargs for Android release builds"
+        log_warning "See 'Hosted-runner resources' in the feb README"
+    fi
+}
+
 # Read a value out of a JSON file with node (node is required for Expo anyway).
 # expr must be a static, script-authored string — anything user-controlled
 # (file path, profile name) is passed out-of-band via argv, never spliced into
@@ -463,6 +490,8 @@ fi
 log_step "Step 4: Building Application"
 
 cd "$PROJECT_DIR"
+
+log_resources
 
 # Create build output directory
 mkdir -p "$BUILD_OUTPUT_DIR"

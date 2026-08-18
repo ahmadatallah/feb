@@ -13,6 +13,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # ubuntu-latest leaves ~20 GB free on /, and a release build of an RN app
+      # with native modules overruns it (C++ per ABI, Gradle caches, and EAS's
+      # second copy of the project under /tmp). Reclaims ~20 GB of preinstalled
+      # toolchains nothing here uses. Must run before the setup-* actions, which
+      # populate the tool cache. See "Hosted-runner resources" in the README.
+      - uses: jlumbroso/free-disk-space@v1.3.1
+        with:
+          android: false # keep the Android SDK
+          swap-storage: false # keep swap for Gradle + Metro
+          tool-cache: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: true
+
       - uses: actions/setup-node@v4
         with:
           node-version: 22
