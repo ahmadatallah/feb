@@ -10,6 +10,13 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    # Read by the withGradleJvmArgs config plugin (README → "Memory"): caps the
+    # Gradle daemon so it fits beside the Kotlin daemon, Metro and EAS's node
+    # process. Without it a private-repo runner (2 vCPU / ~7.8 GiB) is OOM-killed
+    # mid-build with no readable error. Pair it with the two-ABI list from
+    # "Native compilation".
+    env:
+      EAS_BUILD_RUNNER_LOW_MEM: '1'
     steps:
       - uses: actions/checkout@v4
 
@@ -50,3 +57,5 @@ jobs:
         with:
           name: android-build
           path: ${{ steps.build.outputs.android-artifact }}
+          # A missing artifact is a failed build, not an empty upload
+          if-no-files-found: error

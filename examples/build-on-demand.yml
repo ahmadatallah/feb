@@ -1,0 +1,140 @@
+# Example: build on demand — pick the platform and the eas.json profile from the
+# Actions UI ("Run workflow"). One job per platform; both run for `all`.
+#
+# This is the workflow Hashcards ships with: a production AAB on a private-repo
+# ubuntu-latest (2 vCPU / ~7.8 GiB) in ~52 min, the .ipa on macos-latest in
+# ~27 min. The three things that make Android fit on that runner are marked
+# below — see "Hosted-runner resources" in the README for the why.
+name: Build Mobile App (Local)
+
+# Job names must stay static: GitHub does not evaluate ${{ }} in the `name:` of a
+# job that gets skipped, so a conditional job would render as "Android (${{ inputs.profile }})".
+# Platform + profile live in the run title instead.
+run-name: Local build · ${{ inputs.platform }} · ${{ inputs.profile }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: 'Platform to build'
+        required: true
+        default: 'android'
+        type: choice
+        options:
+          - android
+          - ios
+          - all
+      profile:
+        description: 'eas.json build profile'
+        required: true
+        default: 'preview'
+        type: choice
+        options:
+          - preview
+          - production
+          - development
+
+jobs:
+  android:
+    name: Android
+    if: ${{ inputs.platform == 'android' || inputs.platform == 'all' }}
+    runs-on: ubuntu-latest
+    # (1) Memory. A workstation Gradle profile (-Xmx8192m + 3 GB metaspace ≈ 11 GB
+    # for one JVM) does not fit beside the Kotlin daemon, the Gradle workers,
+    # Metro and EAS's node process; :app:mergeExtDexRelease tips the box over and
+    # Linux OOM-kills the RUNNER — "the runner has received a shutdown signal",
+    # "Gradle build failed with unknown error", no stack trace, no uploaded log.
+    # The withGradleJvmArgs config plugin in the README reads this and caps the
+    # daemon at -Xmx4096m / 1.5 GB metaspace. (2) is the ABI list in that same
+    # README section: build arm64-v8a + armeabi-v7a only, so the native modules
+    # are not compiled four times over on two vCPUs.
+    env:
+      EAS_BUILD_RUNNER_LOW_MEM: '1'
+    steps:
+      - uses: actions/checkout@v4
+
+      # (3) Disk. ubuntu-latest leaves ~20 GB free on /; a release RN build (C++
+      # per ABI, Gradle caches, EAS's second project copy under /tmp) overflows
+      # it → "No space left on device". Reclaim ~20 GB of unused preinstalled
+      # toolchains. Must run before setup-node/setup-java (they populate the
+      # tool cache).
+      - uses: jlumbroso/free-disk-space@v1.3.1
+        with:
+          android: false # keep the Android SDK
+          swap-storage: false # keep swap for Gradle + Metro
+          tool-cache: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: true
+
+      # pnpm monorepo: uncomment, and pin the version your lockfile was written with
+      # - uses: pnpm/action-setup@v4
+      #   with:
+      #     version: 8.15.9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          # cache: 'pnpm'
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: ahmadatallah/feb@v1.1.2
+        id: build
+        with:
+          platform: android
+          profile: ${{ inputs.profile }}
+          expo-token: ${{ secrets.EXPO_TOKEN }}
+          # working-directory: apps/mobile          # monorepos
+          # Shared lib must be compiled before the app bundles — feb runs this
+          # after installing deps (at the workspace root) and before eas build --local.
+          # pre-build-command: pnpm --filter @myorg/lib build
+
+      # Artifact lands under the run's "Artifacts" section (Actions → this run → bottom of Summary).
+      # feb ≥ v1.1.0 emits absolute paths; v1.0.1 emitted paths relative to working-directory,
+      # which upload-artifact (root-relative) could not find → silent "No files were found".
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-${{ inputs.profile }}
+          path: ${{ steps.build.outputs.android-artifact }}
+          if-no-files-found: error
+          retention-days: 7
+
+  ios:
+    name: iOS
+    if: ${{ inputs.platform == 'ios' || inputs.platform == 'all' }}
+    # iOS local builds need macOS (Xcode). GitHub-hosted macos runners ship it preinstalled.
+    # Signing: eas build --local uses EAS-managed credentials or a local credentials.json —
+    # a non-simulator profile (preview/production) will fail here without those configured.
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # - uses: pnpm/action-setup@v4
+      #   with:
+      #     version: 8.15.9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          # cache: 'pnpm'
+
+      - uses: ahmadatallah/feb@v1.1.2
+        id: build
+        with:
+          platform: ios
+          profile: ${{ inputs.profile }}
+          expo-token: ${{ secrets.EXPO_TOKEN }}
+          # working-directory: apps/mobile
+          # pre-build-command: pnpm --filter @myorg/lib build
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ios-${{ inputs.profile }}
+          path: ${{ steps.build.outputs.ios-artifact }}
+          if-no-files-found: error
+          retention-days: 7

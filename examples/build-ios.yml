@@ -27,3 +27,4 @@ jobs:
         with:
           name: ios-build
           path: ${{ steps.build.outputs.ios-artifact }}
+          if-no-files-found: error
