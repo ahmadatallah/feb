@@ -27,6 +27,14 @@ inputs:
     description: Artifact filename prefix (defaults to the app.json / package.json name)
     required: false
     default: ""
+  cache:
+    description: >-
+      Cache native build downloads between runs with actions/cache: Gradle's
+      dependency cache for Android, and ~/.rnrepo-cache (rnrepo.org prebuilt
+      xcframeworks) for iOS. Keyed on the lockfile; counts against the repo's
+      Actions cache quota.
+    required: false
+    default: "false"
 
 outputs:
   ios-artifact:
@@ -42,6 +50,31 @@ outputs:
 runs:
   using: composite
   steps:
+    # eas build --local works on a temp copy of the project, so anything a build
+    # downloads into the project (node_modules/*/.rnrepo-cache) is gone after the
+    # job. These two home-directory caches are what a later run can reuse.
+    # android/ and ios/ are generated during the build, so the key is the
+    # lockfile rather than any Gradle or Podfile.
+    - name: Cache Gradle dependencies
+      if: inputs.cache == 'true' && (inputs.platform == 'android' || inputs.platform == 'all')
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.gradle/caches/modules-2
+          ~/.gradle/wrapper/dists
+          !~/.gradle/caches/modules-2/modules-2.lock
+          !~/.gradle/caches/modules-2/gc.properties
+        key: feb-gradle-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml', '**/package-lock.json', '**/yarn.lock', '**/bun.lock', '**/bun.lockb', '!**/node_modules/**') }}
+        restore-keys: feb-gradle-${{ runner.os }}-
+
+    - name: Cache rnrepo prebuilds
+      if: inputs.cache == 'true' && (inputs.platform == 'ios' || inputs.platform == 'all')
+      uses: actions/cache@v4
+      with:
+        path: ~/.rnrepo-cache
+        key: feb-rnrepo-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml', '**/package-lock.json', '**/yarn.lock', '**/bun.lock', '**/bun.lockb', '!**/node_modules/**') }}
+        restore-keys: feb-rnrepo-${{ runner.os }}-
+
     - name: Build
       shell: bash
       working-directory: ${{ inputs.working-directory }}
