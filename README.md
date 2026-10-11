@@ -148,13 +148,14 @@ jobs:
           expo-token: ${{ secrets.EXPO_TOKEN }}
           # working-directory: apps/mobile          # monorepos
           # pre-build-command: pnpm --filter @myorg/lib build
+          # cache: true                             # reuse Gradle / rnrepo downloads
       - uses: actions/upload-artifact@v4
         with:
           name: android-build
           path: ${{ steps.build.outputs.android-artifact }}
 ```
 
-**Inputs**: `platform`, `profile`, `expo-token` (required); `working-directory`, `pre-build-command`, `app-name` (optional).
+**Inputs**: `platform`, `profile`, `expo-token` (required); `working-directory`, `pre-build-command`, `app-name`, `cache` (optional).
 **Outputs**: `ios-artifact`, `android-artifact`, `output-dir`.
 
 Full workflow examples in [`examples/`](./examples). iOS builds need `runs-on: macos-latest` (Xcode preinstalled on GitHub-hosted macOS runners).
@@ -277,6 +278,7 @@ Using free-expo-builds in your app? Open a PR to add it here.
 - **Credentials**: `eas build --local` still uses EAS-managed credentials (signing certs, provisioning profiles, keystores) if you have them configured — or a local `credentials.json`. See the [local builds docs](https://docs.expo.dev/build-reference/local-builds/).
 - **Simulator profiles** (`ios.simulator: true`) produce a `.tar.gz` containing an `.app`, not an `.ipa` — the script names artifacts accordingly and skips the device-install prompt.
 - **Hosted runners**: `ubuntu-latest` runs out of both disk and RAM on a release build, and neither failure leaves a readable error — see [Hosted-runner resources](#hosted-runner-resources).
+- **Caching** (action input `cache: true`): restores Gradle's downloaded dependencies (Android) and `~/.rnrepo-cache` (iOS) between runs, keyed on your lockfile. That saves downloads, not compilation. To skip compiling native libraries at all, add [rnrepo](https://github.com/software-mansion/rnrepo)'s Expo config plugin: it swaps the libraries it supports (Reanimated, Skia, Gesture Handler, SVG, …) for prebuilt binaries, and this cache keeps them. Two traps: a library you patch (`patch-package`, `pnpm patch`) must go on rnrepo's `denyList`, or the prebuilt binary ships without your patch; and in a hoisted monorepo `rnrepo.config.json` belongs at the workspace root, next to `node_modules/react-native`, or it is silently ignored.
 - **Reproducibility**: cloud builds run in a clean container; local builds run on your machine. Pin your toolchain with a `.mise.toml` (see [Dependencies](#dependencies)) and your Node/pnpm versions in `eas.json` (`node`, `pnpm` fields) to keep them close.
 
 ## Development
